@@ -5,18 +5,21 @@ import {
   ElementRef,
   input,
   Input,
+  OnDestroy,
   Renderer2,
   Signal,
 } from '@angular/core';
 import { FormControl } from '@angular/forms';
+import { Subject, takeUntil } from 'rxjs';
 
 @Directive({
   selector: '[appSearch]',
   standalone: true,
 })
-export class SearchDirective implements AfterViewInit {
+export class SearchDirective implements AfterViewInit, OnDestroy {
   color = input<string>('yellow');
   @Input('searchQuery') searchQuery: FormControl = new FormControl();
+  unsubscribe$ = new Subject<void>()
 
   styles: Signal<string> = computed(() => `display: inline-flex; background: ${ this.color() }`)
 
@@ -25,10 +28,15 @@ export class SearchDirective implements AfterViewInit {
   ngAfterViewInit(): void {
     const text: string = this.elementRef.nativeElement.textContent;
 
-    this.searchQuery.valueChanges
+    this.searchQuery.valueChanges.pipe(takeUntil(this.unsubscribe$))
       .subscribe((value) => {
         this.wordSearch(value, text);
       });
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe$.next()
+    this.unsubscribe$.complete()
   }
 
   wordSearch(value: string, text: string) {
